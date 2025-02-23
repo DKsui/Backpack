@@ -84,7 +84,7 @@ bool two_opt_swap(int* tour, double** dist, int n) {
                     tour[m] = new_tour[m];
                 }
                 delete [] new_tour;
-                return true; 
+                return true;
             }
             delete [] new_tour;
         }
@@ -93,8 +93,6 @@ bool two_opt_swap(int* tour, double** dist, int n) {
 }
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
     int n;
     cin >> n;
     Point* points = new Point[n];
