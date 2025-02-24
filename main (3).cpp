@@ -1,9 +1,12 @@
 #include <iostream>
 #include <cmath>
+#include <limits>
+#include <chrono>
 using namespace std;
 struct Point {
     double x, y;
 };
+
 double euclidean_distance(const Point &a, const Point &b) {
     double dx = a.x - b.x;
     double dy = a.y - b.y;
@@ -90,6 +93,64 @@ bool two_opt_swap(int* tour, double** dist, int n) {
     }
     return false;
 }
+bool three_opt_swap(int* tour, double** dist, int n) {
+    double oldLength = compute_length(tour, dist, n, true);
+    for (int i = 0; i < n - 2; i++) {
+        for (int j = i + 1; j < n - 1; j++) {
+            for (int k = j + 1; k < n; k++) {
+                for (int candidate = 1; candidate <= 4; candidate++) {
+                    int* new_tour = new int[n];
+                    int idx = 0;
+                    for (int m = 0; m <= i; m++) {
+                        new_tour[idx++] = tour[m];
+                    }
+                    if (candidate == 1) {
+                        for (int m = j; m >= i + 1; m--) {
+                            new_tour[idx++] = tour[m];
+                        }
+                        for (int m = j + 1; m <= k; m++) {
+                            new_tour[idx++] = tour[m];
+                        }
+                    } else if (candidate == 2) {
+                        for (int m = i + 1; m <= j; m++) {
+                            new_tour[idx++] = tour[m];
+                        }
+                        for (int m = k; m >= j + 1; m--) {
+                            new_tour[idx++] = tour[m];
+                        }
+                    } else if (candidate == 3) {
+                        for (int m = j; m >= i + 1; m--) {
+                            new_tour[idx++] = tour[m];
+                        }
+                        for (int m = k; m >= j + 1; m--) {
+                            new_tour[idx++] = tour[m];
+                        }
+                    } else if (candidate == 4) {
+                        for (int m = j + 1; m <= k; m++) {
+                            new_tour[idx++] = tour[m];
+                        }
+                        for (int m = i + 1; m <= j; m++) {
+                            new_tour[idx++] = tour[m];
+                        }
+                    }
+                    for (int m = k + 1; m < n; m++) {
+                        new_tour[idx++] = tour[m];
+                    }
+                    double newLength = compute_length(new_tour, dist, n, true);
+                    if (newLength < oldLength) {
+                        for (int m = 0; m < n; m++) {
+                            tour[m] = new_tour[m];
+                        }
+                        delete [] new_tour;
+                        return true;
+                    }
+                    delete [] new_tour;
+                }
+            }
+        }
+    }
+    return false;
+}
 
 int main() {
     int n;
@@ -98,19 +159,49 @@ int main() {
     for (int i = 0; i < n; i++) {
         cin >> points[i].x >> points[i].y;
     }
+    int mode;
+    cout << "Enter 0 for path, 1 for cycle: ";
+    cin >> mode;
+    bool is_cycle = (mode == 1);
     double** dist = compute_distance_matrix(points, n);
-    int* tour = nearest_neighbor(dist, n);
-    while (two_opt_swap(tour, dist, n)) {
-    }
-    bool is_cycle = true;
-    double length = compute_length(tour, dist, n, is_cycle);
-    cout << length << "\n";
-    cout << (is_cycle ? 1 : 0) << "\n";
+    int* initial_tour = nearest_neighbor(dist, n);
+    int* tour_two_opt = new int[n];
+    int* tour_three_opt = new int[n];
     for (int i = 0; i < n; i++) {
-        cout << tour[i] + 1 << " ";
+        tour_two_opt[i] = initial_tour[i];
+        tour_three_opt[i] = initial_tour[i];
+    }
+    auto start_two = chrono::high_resolution_clock::now();
+    while (two_opt_swap(tour_two_opt, dist, n)) { }
+    auto end_two = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed_two = end_two - start_two;
+    double length_two = compute_length(tour_two_opt, dist, n, is_cycle);
+    auto start_three = chrono::high_resolution_clock::now();
+    while (three_opt_swap(tour_three_opt, dist, n)) { }
+    auto end_three = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed_three = end_three - start_three;
+    double length_three = compute_length(tour_three_opt, dist, n, is_cycle);
+    cout << "2-opt optimization:" << "\n";
+    cout << "Time taken: " << elapsed_two.count() << " seconds\n";
+    cout << length_two << "\n";
+    cout << mode << "\n";
+    cout << "Tour: ";
+    for (int i = 0; i < n; i++) {
+        cout << tour_two_opt[i] + 1 << " ";
+    }
+    cout << "\n\n";
+    cout << "3-opt optimization:" << "\n";
+    cout << "Time taken: " << elapsed_three.count() << " seconds\n";
+    cout << length_three << "\n";
+    cout << mode << "\n";
+    cout << "Tour: ";
+    for (int i = 0; i < n; i++) {
+        cout << tour_three_opt[i] + 1 << " ";
     }
     cout << "\n";
-    delete [] tour;
+    delete [] initial_tour;
+    delete [] tour_two_opt;
+    delete [] tour_three_opt;
     delete [] points;
     for (int i = 0; i < n; i++) {
         delete [] dist[i];
